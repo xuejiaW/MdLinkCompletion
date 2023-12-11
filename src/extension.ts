@@ -2,89 +2,100 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+const outputChannel = vscode.window.createOutputChannel("Md Link Completion");
+outputChannel.appendLine('Congratulations, your extension mdlinkcompletion is now active!');
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "mdlinkcompletion" is now active!');
 
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
-    let disposable = vscode.commands.registerCommand('mdlinkcompletion.helloWorld', () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Hello World from MDLinkCompletion!');
+    let disposable = vscode.commands.registerTextEditorCommand('extension.removeBrackets', (editor, edit) => {
+        const position = editor.selection.start;
+        const line = editor.document.lineAt(position.line);
+        const edits = removeClosingBrackets(position, line);
+        edits.forEach((e) => {
+            edit.delete(e.range);
+        });
     });
+    context.subscriptions.push(disposable);
 
-    const provider1 = vscode.languages.registerCompletionItemProvider('plaintext', {
 
-        provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
+    const mdDocSelector = [
+        { language: 'markdown', scheme: 'file' },
+        { language: 'markdown', scheme: 'untitled' },
+    ];
 
-            // a simple completion item which inserts `Hello World!`
-            const simpleCompletion = new vscode.CompletionItem('Hello World!');
-
-            // a completion item that inserts its text as snippet,
-            // the `insertText`-property is a `SnippetString` which will be
-            // honored by the editor.
-            const snippetCompletion = new vscode.CompletionItem('Good part of the day');
-            snippetCompletion.insertText = new vscode.SnippetString('Good ${1|morning,afternoon,evening|}. It is ${1}, right?');
-            const docs: any = new vscode.MarkdownString("Inserts a snippet that lets you select [link](x.ts).");
-            snippetCompletion.documentation = docs;
-            docs.baseUri = vscode.Uri.parse('http://example.com/a/b/c/');
-
-            // a completion item that can be accepted by a commit character,
-            // the `commitCharacters`-property is set which means that the completion will
-            // be inserted and then the character will be typed.
-            const commitCharacterCompletion = new vscode.CompletionItem('console');
-            commitCharacterCompletion.commitCharacters = ['.'];
-            commitCharacterCompletion.documentation = new vscode.MarkdownString('Press `.` to get `console.`');
-
-            // a completion item that retriggers IntelliSense when being accepted,
-            // the `command`-property is set which the editor will execute after 
-            // completion has been inserted. Also, the `insertText` is set so that 
-            // a space is inserted after `new`
-            const commandCompletion = new vscode.CompletionItem('new');
-            commandCompletion.kind = vscode.CompletionItemKind.Keyword;
-            commandCompletion.insertText = 'new ';
-            commandCompletion.command = { command: 'editor.action.triggerSuggest', title: 'Re-trigger completions...' };
-
-            // return all completion items as array
-            return [
-                simpleCompletion,
-                snippetCompletion,
-                commitCharacterCompletion,
-                commandCompletion
-            ];
-        }
-    });
-
-    const provider2 = vscode.languages.registerCompletionItemProvider(
-        'plaintext',
+    const path = require('path');
+    const provider = vscode.languages.registerCompletionItemProvider(
+        mdDocSelector,
         {
             provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+                const linePrefix = document.lineAt(position).text.substring(0, position.character);
+                outputChannel.appendLine('abc abc is ' + linePrefix)
 
-                // get all text until the `position` and check if it reads `console.`
-                // and if so then complete if `log`, `warn`, and `error`
-                const linePrefix = document.lineAt(position).text.slice(0, position.character);
-                if (!linePrefix.endsWith('console.')) {
+                if (!linePrefix.endsWith('[[')) {
                     return undefined;
                 }
 
-                return [
-                    new vscode.CompletionItem('log', vscode.CompletionItemKind.Method),
-                    new vscode.CompletionItem('warn', vscode.CompletionItemKind.Method),
-                    new vscode.CompletionItem('error', vscode.CompletionItemKind.Method),
-                ];
+                // Get the file system path of the current document
+                const currentFilePath = document.uri.fsPath;
+
+                const files = vscode.workspace.findFiles('**/*.md', null, 1000);
+                return files.then((uris) => {
+                    const items: vscode.CompletionItem[] = [];
+                    uris.forEach((uri) => {
+                        const fileName = path.basename(uri.fsPath, '.md');
+                        // Calculate the relative path from the current file to the markdown file
+                        const relativeFilePath = path.relative(path.dirname(currentFilePath), uri.fsPath);
+                        // Replace backslashes with forward slashes and escape spaces
+                        const escapedPath = relativeFilePath.split(path.sep).join('/').replace(/ /g, '%20');
+                        const item = new vscode.CompletionItem(fileName, vscode.CompletionItemKind.File);
+                        // Use the escaped path for the markdown link
+                        item.insertText = new vscode.SnippetString(`[${fileName}](${escapedPath})`);
+                        item.filterText = uri.fsPath;
+                        item.detail = vscode.workspace.asRelativePath(uri);
+                        item.command = { command: 'extension.removeBrackets', title: 'Remove Brackets' };
+                        items.push(item);
+                    });
+                    return items;
+                });
             }
         },
-        '.' // triggered whenever a '.' is being typed
+        '[' // triggered whenever a '[' is being typed
     );
 
-    context.subscriptions.push(disposable, provider1, provider2);
+    context.subscriptions.push(provider);
+}
+
+
+function removeClosingBrackets(position: vscode.Position, line: vscode.TextLine) {
+    const indexOfOpeningBrackets = line.text.lastIndexOf('[[', position.character);
+    const indexOfClosingBrackets = line.text.indexOf(']]', position.character);
+
+    let edits = [];
+
+    if (indexOfOpeningBrackets !== -1) {
+        const rangeToDeleteOpeningBrackets = new vscode.Range(
+            line.range.start.with(undefined, indexOfOpeningBrackets),
+            line.range.start.with(undefined, indexOfOpeningBrackets + 2)
+        );
+        edits.push(vscode.TextEdit.delete(rangeToDeleteOpeningBrackets));
+    }
+
+    if (indexOfClosingBrackets !== -1) {
+        const rangeToDeleteClosingBrackets = new vscode.Range(
+            line.range.start.with(undefined, indexOfClosingBrackets),
+            line.range.start.with(undefined, indexOfClosingBrackets + 2)
+        );
+        edits.push(vscode.TextEdit.delete(rangeToDeleteClosingBrackets));
+    }
+
+    return edits;
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() { }
+
+
+

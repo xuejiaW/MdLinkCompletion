@@ -1,24 +1,13 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { parseMarkdownHeaders, removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd } from './utils';
 
-const outputChannel = vscode.window.createOutputChannel("Md Link Completion");
+const outputChannel = vscode.window.createOutputChannel("Tasks");
+outputChannel.show(); // Display the channel by default
 outputChannel.appendLine('Congratulations, your extension mdlinkcompletion is now active!');
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-
-    let disposable = vscode.commands.registerTextEditorCommand('extension.removeBrackets', (editor, edit) => {
-        const position = editor.selection.start;
-        const line = editor.document.lineAt(position.line);
-        const edits = removeClosingBrackets(position, line);
-        edits.forEach((e) => {
-            edit.delete(e.range);
-        });
-    });
-    context.subscriptions.push(disposable);
+    context.subscriptions.push(removeWikiLinkSymbolDispose);
 
 
     const mdDocSelector = [
@@ -27,12 +16,11 @@ export function activate(context: vscode.ExtensionContext) {
     ];
 
     const path = require('path');
-    const provider = vscode.languages.registerCompletionItemProvider(
+    const linkProvider = vscode.languages.registerCompletionItemProvider(
         mdDocSelector,
         {
             provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
                 const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                outputChannel.appendLine('abc abc is ' + linePrefix)
 
                 if (!linePrefix.endsWith('[[')) {
                     return undefined;
@@ -55,44 +43,46 @@ export function activate(context: vscode.ExtensionContext) {
                         item.insertText = new vscode.SnippetString(`[${fileName}](${escapedPath})`);
                         item.filterText = uri.fsPath;
                         item.detail = vscode.workspace.asRelativePath(uri);
-                        item.command = { command: 'extension.removeBrackets', title: 'Remove Brackets' };
+                        item.command = removeWikiLinkSymbolCmd
                         items.push(item);
                     });
                     return items;
                 });
             }
         },
-        '[' // triggered whenever a '[' is being typed
+        '['
     );
 
-    context.subscriptions.push(provider);
+    const headerProvider = vscode.languages.registerCompletionItemProvider(
+        { scheme: 'file', language: 'markdown' },
+        {
+            provideCompletionItems(document, position) {
+                const linePrefix = document.lineAt(position).text.substring(0, position.character);
+                if (!linePrefix.endsWith("[[#")) {
+                    outputChannel.appendLine("direct return" + linePrefix)
+                    return undefined;
+                }
+
+                // 解析文件并获取标题
+                const headers = parseMarkdownHeaders(document.getText());
+                outputChannel.appendLine("headers count is " + headers.length)
+                // 创建补全项
+                return headers.map(header => {
+                    let item = new vscode.CompletionItem(header, vscode.CompletionItemKind.Reference);
+                    item.insertText = `[${header}](#${header.toLowerCase().replace(/ /g, '%20')})`;
+                    item.command = removeWikiLinkSymbolCmd
+                    return item;
+                });
+            }
+        },
+        '#'
+    );
+
+
+    context.subscriptions.push(linkProvider, headerProvider);
 }
 
 
-function removeClosingBrackets(position: vscode.Position, line: vscode.TextLine) {
-    const indexOfOpeningBrackets = line.text.lastIndexOf('[[', position.character);
-    const indexOfClosingBrackets = line.text.indexOf(']]', position.character);
-
-    let edits = [];
-
-    if (indexOfOpeningBrackets !== -1) {
-        const rangeToDeleteOpeningBrackets = new vscode.Range(
-            line.range.start.with(undefined, indexOfOpeningBrackets),
-            line.range.start.with(undefined, indexOfOpeningBrackets + 2)
-        );
-        edits.push(vscode.TextEdit.delete(rangeToDeleteOpeningBrackets));
-    }
-
-    if (indexOfClosingBrackets !== -1) {
-        const rangeToDeleteClosingBrackets = new vscode.Range(
-            line.range.start.with(undefined, indexOfClosingBrackets),
-            line.range.start.with(undefined, indexOfClosingBrackets + 2)
-        );
-        edits.push(vscode.TextEdit.delete(rangeToDeleteClosingBrackets));
-    }
-
-    return edits;
-}
 
 // This method is called when your extension is deactivated
 export function deactivate() { }

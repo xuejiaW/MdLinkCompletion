@@ -1,14 +1,11 @@
 import * as vscode from 'vscode';
-import { parseMarkdownHeaders, removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd } from './utils';
+import { outputChannel, parseMarkdownHeaders, removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd, replaceLinkContentDispose, createReplaceLinkContentCmd } from './utils';
 
-const outputChannel = vscode.window.createOutputChannel("Tasks");
-outputChannel.show(); // Display the channel by default
-outputChannel.appendLine('Congratulations, your extension mdlinkcompletion is now active!');
 
 export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(removeWikiLinkSymbolDispose);
-
+    context.subscriptions.push(replaceLinkContentDispose);
 
     const mdDocSelector = [
         { language: 'markdown', scheme: 'file' },
@@ -16,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
     ];
 
     const path = require('path');
+    const fs = require('fs');
     const linkProvider = vscode.languages.registerCompletionItemProvider(
         mdDocSelector,
         {
@@ -54,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     const headerProvider = vscode.languages.registerCompletionItemProvider(
-        { scheme: 'file', language: 'markdown' },
+        mdDocSelector,
         {
             provideCompletionItems(document, position) {
                 const linePrefix = document.lineAt(position).text.substring(0, position.character);
@@ -63,14 +61,55 @@ export function activate(context: vscode.ExtensionContext) {
                     return undefined;
                 }
 
-                // 解析文件并获取标题
                 const headers = parseMarkdownHeaders(document.getText());
                 outputChannel.appendLine("headers count is " + headers.length)
-                // 创建补全项
                 return headers.map(header => {
                     let item = new vscode.CompletionItem(header, vscode.CompletionItemKind.Reference);
                     item.insertText = `[${header}](#${header.toLowerCase().replace(/ /g, '%20')})`;
-                    item.command = removeWikiLinkSymbolCmd
+                    item.command = removeWikiLinkSymbolCmd;
+                    return item;
+                });
+            }
+        },
+        '#'
+    );
+
+    const mdFileHeaderProvider = vscode.languages.registerCompletionItemProvider(
+        mdDocSelector,
+        {
+            provideCompletionItems(document, position) {
+                const linePrefix = document.lineAt(position).text.substring(0, position.character);
+                if (!linePrefix.endsWith(".md#")) {
+                    outputChannel.appendLine("direct return" + linePrefix)
+                    return undefined;
+                }
+
+                const mdLinkMatch = linePrefix.match(/\[(.*)\]\((.*\.md)#/);
+                if (!mdLinkMatch) {
+                    outputChannel.appendLine("linePrefix is " + linePrefix)
+                    return undefined
+                }
+
+                const relativeFilePath = mdLinkMatch[2];
+                const mdLink = mdLinkMatch[0];
+                const absoluteFilePath = decodeURIComponent(path.join(path.dirname(document.uri.fsPath), relativeFilePath));
+
+                // Check the file exists
+                if (!fs.existsSync(absoluteFilePath)) {
+                    outputChannel.appendLine("file not exists " + absoluteFilePath)
+                    return undefined;
+                }
+
+                // Get the file content from absolute path
+                let fileContent = fs.readFileSync(absoluteFilePath, 'utf-8');
+
+                const headers = parseMarkdownHeaders(fileContent);
+                outputChannel.appendLine("headers count is " + headers.length)
+                return headers.map(header => {
+                    let item = new vscode.CompletionItem(header, vscode.CompletionItemKind.Reference);
+                    item.insertText = header.toLowerCase().replace(/ /g, '%20');
+                    item.command = createReplaceLinkContentCmd(document, position, mdLink, header);
+
                     return item;
                 });
             }
@@ -79,10 +118,9 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
 
-    context.subscriptions.push(linkProvider, headerProvider);
+
+    context.subscriptions.push(linkProvider, headerProvider, mdFileHeaderProvider);
 }
-
-
 
 // This method is called when your extension is deactivated
 export function deactivate() { }

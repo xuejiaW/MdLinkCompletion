@@ -2,7 +2,7 @@
     "name": "markdown-link-completion",
     "displayName": "Markdown Link Completion",
     "description": "A VS Code extension for completing Markdown links like in obsidian.",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "engines": {
         "vscode": "^1.85.0"
     },
@@ -20,6 +20,7 @@
         "type": "git",
         "url": "https://github.com/xuejiaW/vscode-markdown-link-completion"
     },
+    "publisher": "Tuncle",
     "scripts": {
         "vscode:prepublish": "npm run package",
         "compile": "webpack",

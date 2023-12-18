@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { outputChannel, parseMarkdownHeaders } from './utils';
-import {removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd, replaceLinkContentDispose, createReplaceLinkContentCmd } from './disposes';
+import { removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd, replaceLinkContentDispose, createReplaceLinkContentCmd } from './disposes';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -30,18 +30,23 @@ export function activate(context: vscode.ExtensionContext) {
                 const files = vscode.workspace.findFiles('**/*.md', null, 1000);
                 return files.then((uris) => {
                     const items: vscode.CompletionItem[] = [];
+
                     uris.forEach((uri) => {
                         const fileName = path.basename(uri.fsPath, '.md');
                         const relativeFilePath = path.relative(path.dirname(currentFilePath), uri.fsPath);
                         const escapedPath = relativeFilePath.split(path.sep).join('/').replace(/ /g, '%20');
+                        const normalizedPath = relativeFilePath.replace(/\\/g, '/');
+
                         const item = new vscode.CompletionItem(fileName, vscode.CompletionItemKind.File);
                         item.insertText = new vscode.SnippetString(`[${fileName}](${escapedPath})`);
-                        item.filterText = uri.fsPath;
+                        item.filterText = `${fileName} ${normalizedPath.replace(/\//g, ' ')}`;
+                        item.sortText = String(relativeFilePath.length).padStart(5, '0') + fileName;
                         item.detail = vscode.workspace.asRelativePath(uri);
                         item.command = removeWikiLinkSymbolCmd;
-                        item.sortText = fileName.toLowerCase();
+
                         items.push(item);
                     });
+
                     return items;
                 });
             }

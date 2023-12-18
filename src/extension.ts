@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { outputChannel, parseMarkdownHeaders, removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd, replaceLinkContentDispose, createReplaceLinkContentCmd } from './utils';
+import { outputChannel, parseMarkdownHeaders } from './utils';
+import {removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd, replaceLinkContentDispose, createReplaceLinkContentCmd } from './disposes';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -24,7 +25,6 @@ export function activate(context: vscode.ExtensionContext) {
                     return undefined;
                 }
 
-                // Get the file system path of the current document
                 const currentFilePath = document.uri.fsPath;
 
                 const files = vscode.workspace.findFiles('**/*.md', null, 1000);
@@ -32,16 +32,14 @@ export function activate(context: vscode.ExtensionContext) {
                     const items: vscode.CompletionItem[] = [];
                     uris.forEach((uri) => {
                         const fileName = path.basename(uri.fsPath, '.md');
-                        // Calculate the relative path from the current file to the markdown file
                         const relativeFilePath = path.relative(path.dirname(currentFilePath), uri.fsPath);
-                        // Replace backslashes with forward slashes and escape spaces
                         const escapedPath = relativeFilePath.split(path.sep).join('/').replace(/ /g, '%20');
                         const item = new vscode.CompletionItem(fileName, vscode.CompletionItemKind.File);
-                        // Use the escaped path for the markdown link
                         item.insertText = new vscode.SnippetString(`[${fileName}](${escapedPath})`);
                         item.filterText = uri.fsPath;
                         item.detail = vscode.workspace.asRelativePath(uri);
-                        item.command = removeWikiLinkSymbolCmd
+                        item.command = removeWikiLinkSymbolCmd;
+                        item.sortText = fileName.toLowerCase();
                         items.push(item);
                     });
                     return items;
@@ -57,7 +55,6 @@ export function activate(context: vscode.ExtensionContext) {
             provideCompletionItems(document, position) {
                 const linePrefix = document.lineAt(position).text.substring(0, position.character);
                 if (!linePrefix.endsWith("[[#")) {
-                    outputChannel.appendLine("direct return" + linePrefix)
                     return undefined;
                 }
 
@@ -80,7 +77,6 @@ export function activate(context: vscode.ExtensionContext) {
             provideCompletionItems(document, position) {
                 const linePrefix = document.lineAt(position).text.substring(0, position.character);
                 if (!linePrefix.endsWith(".md#")) {
-                    outputChannel.appendLine("direct return" + linePrefix)
                     return undefined;
                 }
 
@@ -108,7 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return headers.map(header => {
                     let item = new vscode.CompletionItem(header, vscode.CompletionItemKind.Reference);
                     item.insertText = header.toLowerCase().replace(/ /g, '%20');
-                    item.command = createReplaceLinkContentCmd(document, position, mdLink, header);
+                    item.command = createReplaceLinkContentCmd(position, mdLink, header);
 
                     return item;
                 });
@@ -116,8 +112,6 @@ export function activate(context: vscode.ExtensionContext) {
         },
         '#'
     );
-
-
 
     context.subscriptions.push(linkProvider, headerProvider, mdFileHeaderProvider);
 }

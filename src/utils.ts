@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-export const outputChannel = vscode.window.createOutputChannel("Tasks");
-outputChannel.show(); // Display the channel by default
-outputChannel.appendLine('Congratulations, your extension mdlinkcompletion is now active!');
+export const outputChannel = vscode.window.createOutputChannel("Markdown Link Completion");
+outputChannel.show(false); // Display the channel by default
+outputChannel.appendLine('Congratulations, your extension markdown link completion is now active!');
 
 
 export function removeClosingBrackets(position: vscode.Position, line: vscode.TextLine) {
@@ -31,17 +31,7 @@ export function removeClosingBrackets(position: vscode.Position, line: vscode.Te
     return edits;
 }
 
-export let removeWikiLinkSymbolDispose = vscode.commands.registerTextEditorCommand('extension.removeWikiLinkSymbol', (editor, edit) => {
-    const position = editor.selection.start;
-    const line = editor.document.lineAt(position.line);
-    const edits = removeClosingBrackets(position, line);
-    edits.forEach((e) => {
-        edit.delete(e.range);
-    });
-});
-
 export function parseMarkdownHeaders(text: string) {
-    // 用于匹配 Markdown 标题的正则表达式
     const headerRegex = /^(#+)\s+(.*)$/gm;
     let headers = [];
     let match;
@@ -51,16 +41,16 @@ export function parseMarkdownHeaders(text: string) {
     return headers;
 }
 
-function replaceMarkdownLinkText(editor: vscode.TextEditor, mdLink: string, header: string) {
+export function replaceMarkdownLinkText(editor: vscode.TextEditor, position: vscode.Position, mdLink: string, header: string) {
     editor.edit(editBuilder => {
-        const matches = mdLink.match(/\[([^\]]+)\]/);
+        const matches = mdLink.match(/(\[[^\]]+\])/);
 
         if (matches && matches[1]) {
             const oldText = matches[1];
-            const newText = `${header}`;
+            const newText = `[${header}]`;
 
-            const text = editor.document.getText();
-            const startPos = text.indexOf(oldText);
+            const textBeforePosition = editor.document.getText(new vscode.Range(new vscode.Position(0, 0), position));
+            const startPos = textBeforePosition.lastIndexOf(oldText);
             const endPos = startPos + oldText.length;
 
             if (startPos !== -1 && endPos !== -1) {
@@ -71,23 +61,4 @@ function replaceMarkdownLinkText(editor: vscode.TextEditor, mdLink: string, head
             }
         }
     });
-}
-
-export let replaceLinkContentDispose = vscode.commands.registerTextEditorCommand('extension.replaceLinkContent', (editor, _, ...additionalArguments) => {
-    if (additionalArguments.length >= 3) {
-
-        const [_, __, mdLink, header] = additionalArguments;
-
-        replaceMarkdownLinkText(editor, mdLink, header);
-    }
-});
-
-export let removeWikiLinkSymbolCmd = { command: 'extension.removeWikiLinkSymbol', title: 'Remove Wiki Link Symbol' };
-
-export function createReplaceLinkContentCmd(document: vscode.TextDocument, position: vscode.Position, mdLink: string, header: string) {
-    return {
-        title: 'Replace Markdown Link Text',
-        command: 'extension.replaceLinkContent',
-        arguments: [document, position, mdLink, header]
-    };
 }

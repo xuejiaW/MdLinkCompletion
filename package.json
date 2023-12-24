@@ -3,6 +3,7 @@
     "displayName": "Markdown Link Completion",
     "description": "A VS Code extension for completing Markdown links like in obsidian.",
     "version": "0.0.2",
+    "icon": "Icon.png",
     "engines": {
         "vscode": "^1.85.0"
     },

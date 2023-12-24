@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import {replaceMarkdownLinkText , removeClosingBrackets} from './utils';
+import {replaceMarkdownLinkContent as replaceMarkdownLinkContent , removeClosingBrackets} from './utils';
 
 
 export let replaceLinkContentDispose = vscode.commands.registerTextEditorCommand('extension.replaceLinkContent', (editor, edit, ...additionalArguments) => {
@@ -7,7 +7,7 @@ export let replaceLinkContentDispose = vscode.commands.registerTextEditorCommand
 
         const [position, mdLink, header] = additionalArguments;
 
-        replaceMarkdownLinkText(editor, position, mdLink, header);
+        replaceMarkdownLinkContent(editor, position, mdLink, header);
     }
 });
 

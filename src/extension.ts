@@ -85,9 +85,10 @@ export function activate(context: vscode.ExtensionContext) {
                     return undefined;
                 }
 
-                const mdLinkMatch = linePrefix.match(/\[(.*)\]\((.*\.md)#/);
+                const mkLinkMatches = [...linePrefix.matchAll(/\[(.*?)\]\((.*?\.md)#/g)];
+                const mdLinkMatch = mkLinkMatches[mkLinkMatches.length - 1];
                 if (!mdLinkMatch) {
-                    outputChannel.appendLine("linePrefix is " + linePrefix)
+                    outputChannel.appendLine("linePrefix is " + linePrefix);
                     return undefined
                 }
 
@@ -105,7 +106,6 @@ export function activate(context: vscode.ExtensionContext) {
                 let fileContent = fs.readFileSync(absoluteFilePath, 'utf-8');
 
                 const headers = parseMarkdownHeaders(fileContent);
-                outputChannel.appendLine("headers count is " + headers.length)
                 return headers.map(header => {
                     let item = new vscode.CompletionItem(header, vscode.CompletionItemKind.Reference);
                     item.insertText = header.toLowerCase().replace(/ /g, '%20');

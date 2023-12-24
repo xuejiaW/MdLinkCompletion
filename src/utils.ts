@@ -41,7 +41,7 @@ export function parseMarkdownHeaders(text: string) {
     return headers;
 }
 
-export function replaceMarkdownLinkText(editor: vscode.TextEditor, position: vscode.Position, mdLink: string, header: string) {
+export function replaceMarkdownLinkContent(editor: vscode.TextEditor, position: vscode.Position, mdLink: string, header: string) {
     editor.edit(editBuilder => {
         const matches = mdLink.match(/(\[[^\]]+\])/);
 

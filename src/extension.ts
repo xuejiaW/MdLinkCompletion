@@ -21,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
             provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
                 const linePrefix = document.lineAt(position).text.substring(0, position.character);
 
-                if (!linePrefix.endsWith('[[')) {
+                if (!linePrefix.includes("[[") && !linePrefix.includes("【【")) {
                     return undefined;
                 }
 
@@ -51,7 +51,8 @@ export function activate(context: vscode.ExtensionContext) {
                 });
             }
         },
-        '['
+        '[',
+        '【'
     );
 
     const headerProvider = vscode.languages.registerCompletionItemProvider(
@@ -59,7 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
         {
             provideCompletionItems(document, position) {
                 const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                if (!linePrefix.endsWith("[[#")) {
+                if (!linePrefix.includes("[[#") && !linePrefix.includes("【【#")) {
                     return undefined;
                 }
 
@@ -81,7 +82,7 @@ export function activate(context: vscode.ExtensionContext) {
         {
             provideCompletionItems(document, position) {
                 const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                if (!linePrefix.endsWith(".md#")) {
+                if (!linePrefix.includes(".md#")) {
                     return undefined;
                 }
 

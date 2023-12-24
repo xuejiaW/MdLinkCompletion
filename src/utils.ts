@@ -6,17 +6,23 @@ outputChannel.appendLine('Congratulations, your extension markdown link completi
 
 
 export function removeClosingBrackets(position: vscode.Position, line: vscode.TextLine) {
-    const indexOfOpeningBrackets = line.text.lastIndexOf('[[', position.character);
-    const indexOfClosingBrackets = line.text.indexOf(']]', position.character);
+
+    let indexOfOpeningBrackets = line.text.lastIndexOf('[[', position.character);
+    if (indexOfOpeningBrackets === -1) indexOfOpeningBrackets = line.text.lastIndexOf('【【', position.character);
+
+    let indexOfClosingBrackets = line.text.indexOf(']]', position.character);
+    if (indexOfClosingBrackets === -1) indexOfClosingBrackets = line.text.lastIndexOf('】】', position.character);
 
     let edits = [];
 
     if (indexOfOpeningBrackets !== -1) {
+
         let toDeleteCount = line.text[indexOfOpeningBrackets + 2] === '#' ? 3 : 2;
         const rangeToDeleteOpeningBrackets = new vscode.Range(
             line.range.start.with(undefined, indexOfOpeningBrackets),
             line.range.start.with(undefined, indexOfOpeningBrackets + toDeleteCount)
         );
+
         edits.push(vscode.TextEdit.delete(rangeToDeleteOpeningBrackets));
     }
 

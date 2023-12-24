@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 export const outputChannel = vscode.window.createOutputChannel("Markdown Link Completion");
-outputChannel.show(false); // Display the channel by default
+// outputChannel.show(false); // Display the channel by default
 outputChannel.appendLine('Congratulations, your extension markdown link completion is now active!');
 
 

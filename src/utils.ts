@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 
+
 export const outputChannel = vscode.window.createOutputChannel("Markdown Link Completion");
-// outputChannel.show(false); // Display the channel by default
+outputChannel.show(false); // Display the channel by default
 outputChannel.appendLine('Congratulations, your extension markdown link completion is now active!');
 
 
@@ -67,4 +68,13 @@ export function replaceMarkdownLinkContent(editor: vscode.TextEditor, position: 
             }
         }
     });
+}
+
+export function convertToPinyin(text: string) {
+    var pinyin = require("pinyin");
+
+    return pinyin(text, {
+        style: pinyin.STYLE_NORMAL,
+        heteronym: false
+    }).map((word: string[]) => word[0]).join(' ');
 }

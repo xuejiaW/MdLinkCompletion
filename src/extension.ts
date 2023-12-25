@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
-import { outputChannel, parseMarkdownHeaders } from './utils';
+import { outputChannel, parseMarkdownHeaders, convertToPinyin } from './utils';
 import { removeWikiLinkSymbolDispose, removeWikiLinkSymbolCmd, replaceLinkContentDispose, createReplaceLinkContentCmd } from './disposes';
 
 
 export function activate(context: vscode.ExtensionContext) {
+
+    const path = require('path');
+    const fs = require('fs');
 
     context.subscriptions.push(removeWikiLinkSymbolDispose);
     context.subscriptions.push(replaceLinkContentDispose);
@@ -13,8 +16,6 @@ export function activate(context: vscode.ExtensionContext) {
         { language: 'markdown', scheme: 'untitled' },
     ];
 
-    const path = require('path');
-    const fs = require('fs');
     const linkProvider = vscode.languages.registerCompletionItemProvider(
         mdDocSelector,
         {
@@ -36,10 +37,11 @@ export function activate(context: vscode.ExtensionContext) {
                         const relativeFilePath = path.relative(path.dirname(currentFilePath), uri.fsPath);
                         const escapedPath = relativeFilePath.split(path.sep).join('/').replace(/ /g, '%20');
                         const normalizedPath = relativeFilePath.replace(/\\/g, '/');
+                        const filterText = `${fileName} ${normalizedPath.replace(/\//g, ' ')}`;
 
                         const item = new vscode.CompletionItem(fileName, vscode.CompletionItemKind.File);
                         item.insertText = new vscode.SnippetString(`[${fileName}](${escapedPath})`);
-                        item.filterText = `${fileName} ${normalizedPath.replace(/\//g, ' ')}`;
+                        item.filterText = `${filterText} ${convertToPinyin(filterText)}`;
                         item.sortText = String(relativeFilePath.length).padStart(5, '0') + fileName;
                         item.detail = vscode.workspace.asRelativePath(uri);
                         item.command = removeWikiLinkSymbolCmd;
@@ -69,6 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return headers.map(header => {
                     let item = new vscode.CompletionItem(header, vscode.CompletionItemKind.Reference);
                     item.insertText = `[${header}](#${header.toLowerCase().replace(/ /g, '%20')})`;
+                    item.filterText = `${header} ${convertToPinyin(header)}`
                     item.command = removeWikiLinkSymbolCmd;
                     return item;
                 });
@@ -110,8 +113,8 @@ export function activate(context: vscode.ExtensionContext) {
                 return headers.map(header => {
                     let item = new vscode.CompletionItem(header, vscode.CompletionItemKind.Reference);
                     item.insertText = header.toLowerCase().replace(/ /g, '%20');
+                    item.filterText = `${header} ${convertToPinyin(header)}`
                     item.command = createReplaceLinkContentCmd(position, mdLink, header);
-
                     return item;
                 });
             }
@@ -121,6 +124,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(linkProvider, headerProvider, mdFileHeaderProvider);
 }
+
 
 // This method is called when your extension is deactivated
 export function deactivate() { }

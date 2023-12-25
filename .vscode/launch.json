@@ -11,7 +11,7 @@
 			"request": "launch",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-                "--disable-extensions" // 不加载其他插件
+                // "--disable-extensions" // 不加载其他插件
 			],
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"

@@ -84,10 +84,13 @@ export function activate(context: vscode.ExtensionContext) {
         mdDocSelector,
         {
             provideCompletionItems(document, position) {
-                const linePrefix = document.lineAt(position).text.substring(0, position.character);
-                if (!linePrefix.includes(".md#")) {
+                let linePrefix = document.lineAt(position).text.substring(0, position.character);
+                if (!linePrefix.endsWith(".md#")) {
                     return undefined;
                 }
+
+                const lastBracketIndex = linePrefix.lastIndexOf('[');
+                linePrefix = linePrefix.substring(lastBracketIndex)
 
                 const mkLinkMatches = [...linePrefix.matchAll(/\[(.*?)\]\((.*?\.md)#/g)];
                 const mdLinkMatch = mkLinkMatches[mkLinkMatches.length - 1];
@@ -102,7 +105,8 @@ export function activate(context: vscode.ExtensionContext) {
 
                 // Check the file exists
                 if (!fs.existsSync(absoluteFilePath)) {
-                    outputChannel.appendLine("file not exists " + absoluteFilePath)
+                    outputChannel.appendLine("md link is " + mdLink);
+                    outputChannel.appendLine("file not exists " + absoluteFilePath);
                     return undefined;
                 }
 
